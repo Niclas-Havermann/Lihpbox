@@ -1,0 +1,178 @@
+import 'package:flutter/material.dart';
+import '../services/camera_service.dart';
+import '../services/photo_service.dart';
+import '../services/storage_service.dart';
+import '../models/photo.dart';
+import '../widgets/custom_button.dart';
+import '../widgets/timer_widget.dart';
+import 'dart:io';
+
+/// Preview Screen - Zeigt Live-Preview der Kamera
+class PreviewScreen extends StatefulWidget {
+  const PreviewScreen({Key? key}) : super(key: key);
+
+  @override
+  State<PreviewScreen> createState() => _PreviewScreenState();
+}
+
+class _PreviewScreenState extends State<PreviewScreen> {
+  final _cameraService = CameraService();
+  final _photoService = PhotoService();
+  final _storageService = StorageService();
+
+  String? _previewImagePath;
+  bool _isLoadingPreview = true;
+  bool _isCapturing = false;
+  bool _showTimer = false;
+  int _timerDuration = 5; // Standard-Timer
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPreview();
+  }
+
+  Future<void> _loadPreview() async {
+    final previewPath = await _cameraService.startLivePreview();
+    if (mounted) {
+      setState(() {
+        _previewImagePath = previewPath;
+        _isLoadingPreview = false;
+      });
+    }
+  }
+
+  Future<void> _onTimerComplete() async {
+    // Timer ist abgelaufen - löse die Kamera aus
+    if (mounted) {
+      setState(() => _isCapturing = true);
+    }
+
+    final storagePath = _storageService.getPhotoStoragePath();
+    if (storagePath == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('USB-Pfad nicht gesetzt')),
+        );
+        setState(() {
+          _isCapturing = false;
+          _showTimer = false;
+        });
+      }
+      return;
+    }
+
+    final photoPath = await _cameraService.capturePhoto(storagePath);
+
+    if (mounted) {
+      setState(() {
+        _showTimer = false;
+        _isCapturing = false;
+      });
+
+      if (photoPath != null) {
+        // Erstelle Photo-Objekt
+        final photo = Photo(
+          id: _photoService.generatePhotoId(),
+          filePath: photoPath,
+          timestamp: DateTime.now(),
+          fileName: photoPath.split('\\').last,
+        );
+
+        _photoService.addPhoto(photo);
+
+        // Navigiere zum Bestätigungsbildschirm
+        if (mounted) {
+          Navigator.of(context).pushReplacementNamed(
+            '/photo-confirmation',
+            arguments: photo,
+          );
+        }
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Fehler beim Aufnehmen des Fotos')),
+        );
+      }
+    }
+  }
+
+  void _capturePhoto() {
+    setState(() => _showTimer = true);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return WillPopScope(
+      onWillPop: () async {
+        Navigator.of(context).pushReplacementNamed('/');
+        return false;
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Kamera-Vorschau'),
+          centerTitle: true,
+          backgroundColor: Colors.blueAccent,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => Navigator.of(context).pushReplacementNamed('/'),
+          ),
+        ),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Preview Image
+              Expanded(
+                child: Container(
+                  margin: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey, width: 3),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: _isLoadingPreview
+                      ? const Center(child: CircularProgressIndicator())
+                      : _previewImagePath != null &&
+                              File(_previewImagePath!).existsSync()
+                          ? ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: Image.file(
+                                File(_previewImagePath!),
+                                fit: BoxFit.cover,
+                              ),
+                            )
+                          : const Center(
+                              child: Text(
+                                'Keine Vorschau verfügbar',
+                                style: TextStyle(fontSize: 18),
+                              ),
+                            ),
+                ),
+              ),
+
+              // Timer or Capture Button
+              if (_showTimer)
+                TimerWidget(
+                  duration: _timerDuration,
+                  isRunning: _showTimer,
+                  onComplete: _onTimerComplete,
+                )
+              else
+                Padding(
+                  padding: const EdgeInsets.all(30.0),
+                  child: CustomButton(
+                    label: _isCapturing ? 'Aufnahme läuft...' : 'Foto aufnehmen',
+                    onPressed: _capturePhoto,
+                    isLoading: _isCapturing,
+                    backgroundColor: Colors.red,
+                    width: 300,
+                    height: 70,
+                    fontSize: 24,
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
