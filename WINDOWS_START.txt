@@ -1,0 +1,122 @@
+# 🚀 LIHPBOX - Auf deinem Laptop starten
+
+Du hast jetzt **zwei Möglichkeiten**, um die App zu starten:
+
+---
+
+## ✅ Schnellstart (Empfohlen für erste Verwendung)
+
+### Einfach diese Datei doppelklicken:
+```
+▶ RUN_LIHPBOX.bat
+```
+
+Die App startet automatisch im Debug-Modus. Das ist normal!
+
+---
+
+## 🎮 Erweiterte Variante mit Menü
+
+### Doppelklick auf diese Datei für mehr Optionen:
+```
+▶ LIHPBOX_LAUNCHER.bat
+```
+
+**Menü-Optionen:**
+- **1) STARTEN** - Schnell die App starten
+- **2) RELEASE** - Optimierte Version bauen (beim ersten Mal)
+- **3) BEREINIGEN** - Falls Fehler auftreten
+- **4) EINSTELLUNGEN** - Kamera/Drucker überprüfen
+- **5) EXIT** - Beenden
+
+---
+
+## 📋 Voraussetzungen
+
+Bevor du startest, stelle sicher, dass folgendes installiert ist:
+
+### ✅ Flutter
+Download: https://flutter.dev/docs/get-started/install/windows
+
+Überprüfe Installation:
+```
+flutter --version
+```
+
+### ✅ Git (Falls noch nicht installiert)
+Download: https://git-scm.com/download/win
+
+### ✅ Nikon D7100 Kamera (Optional)
+gPhoto2 wird automatisch erkannt, wenn installiert:
+```
+choco install gphoto2
+```
+oder manuell von: http://www.gphoto.org/
+
+---
+
+## 🎯 Erste Schritte
+
+1. **Stelle sicher, dass Flutter installiert ist** (siehe Voraussetzungen)
+2. **Doppelklick auf `RUN_LIHPBOX.bat`**
+3. **Warte, bis die App startet** (erste Ausführung dauert ein paar Sekunden)
+4. **App ist bereit!** 🎉
+
+---
+
+## 🐛 Häufige Fehler
+
+### "Flutter not found"
+→ Flask ist nicht im PATH. Installiere Flutter neu und starte den Computer neu.
+
+### "pubspec.yaml not found"
+→ Stelle sicher, dass du die .bat Datei im Lihpbox-Verzeichnis startest.
+
+### Schwarzer Bildschirm beim Start
+→ Das ist normal! Die App baut sich beim ersten Start zusammen. Warte ein paar Sekunden.
+
+### App startet, aber Kamera funktioniert nicht
+→ Benutze den Simulator-Modus oder installiere gPhoto2
+
+---
+
+## 💾 Release-Version (Optional)
+
+Wenn du die App nur einmal starten möchtest, verwende:
+```
+LIHPBOX_LAUNCHER.bat → Wähle Option 2 (RELEASE)
+```
+
+Danach findest du die fertige App unter:
+```
+build\windows\x64\runner\Release\lihpbox.exe
+```
+
+Diese `.exe` Datei kannst du dann direkt starten ohne Flutter!
+
+---
+
+## 🖥️ Desktop-Verknüpfung erstellen (Optional)
+
+Um eine Verknüpfung auf dem Desktop zu erstellen:
+
+1. Rechtsklick auf `RUN_LIHPBOX.bat`
+2. "Senden an" → "Desktop (Verknüpfung)"
+3. Jetzt kannst du die App vom Desktop aus starten
+
+---
+
+## 📞 Support
+
+Hast du Probleme? Schau in diese Dateien:
+- `DEVELOPMENT.md` - Entwickler-Docs
+- `README_DE.md` - Projektübersicht
+- `GETTING_STARTED.md` - Allgemeine Anleitung
+
+---
+
+## ✨ Fertig!
+
+**Viel Spaß mit Lihpbox! 🎬📸**
+
+Starte jetzt einfach: `RUN_LIHPBOX.bat`
