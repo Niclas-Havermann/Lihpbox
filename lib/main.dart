@@ -26,7 +26,6 @@ class LihpboxApp extends StatelessWidget {
       ),
       home: const HomeScreen(),
       routes: {
-        '/': (context) => const HomeScreen(),
         '/preview': (context) => const PreviewScreen(),
         '/settings': (context) => const SettingsScreen(),
         '/photo-confirmation': (context) {
