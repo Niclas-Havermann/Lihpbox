@@ -44,13 +44,31 @@ else
     echo "[OK] Abhängigkeiten installiert"
 fi
 
-# Überprüfe Windows-Plattform
+# Überprüfe Desktop-Plattformen
 echo ""
-echo "[4/5] Überprüfe Plattformen..."
-if ! grep -q "windows" pubspec.yaml; then
-    echo "[INFO] Windows-Plattform aktivieren..."
-    flutter config --enable-windows-desktop
-fi
+echo "[4/5] Überprüfe Desktop-Plattformen..."
+case "$OSTYPE" in
+  linux*)
+    if ! grep -q "linux" pubspec.yaml; then
+      echo "[INFO] Linux-Plattform wird unterstützt"
+    fi
+    echo "[OK] Linux erkannt"
+    ;;
+  darwin*)
+    if ! grep -q "macos" pubspec.yaml; then
+      echo "[INFO] macOS-Plattform aktivieren..."
+      flutter config --enable-macos-desktop
+    fi
+    echo "[OK] macOS erkannt"
+    ;;
+  msys*|mingw*)
+    if ! grep -q "windows" pubspec.yaml; then
+      echo "[INFO] Windows-Plattform aktivieren..."
+      flutter config --enable-windows-desktop
+    fi
+    echo "[OK] Windows erkannt"
+    ;;
+esac
 
 # Vollständige Diagnose
 echo ""
@@ -64,8 +82,21 @@ echo "==========================================="
 echo ""
 echo "Die App ist bereit zur Verwendung!"
 echo ""
-echo "Um die App zu starten:"
-echo "  flutter run -d windows"
-echo ""
-echo "Weitere Informationen: README_DE.md"
+case "$OSTYPE" in
+  linux*)
+    echo "Um die App zu starten:"
+    echo "  bash START_APP.sh"
+    echo "  oder: flutter run -d linux"
+    echo ""
+    echo "Weitere Informationen: LINUX_SETUP.md"
+    ;;
+  darwin*)
+    echo "Um die App zu starten:"
+    echo "  flutter run -d macos"
+    ;;
+  msys*|mingw*)
+    echo "Um die App zu starten:"
+    echo "  flutter run -d windows"
+    ;;
+esac
 echo ""

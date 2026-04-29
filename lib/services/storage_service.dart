@@ -15,12 +15,31 @@ class StorageService {
 
   StorageService._internal();
 
-  /// Erkennt alle verfügbaren USB-Laufwerke
+  /// Erkennt alle verfügbaren USB-Laufwerke (plattformabhängig)
   Future<List<String>> detectUsbDrives() async {
     try {
       logger.i('Erkenne USB-Laufwerke...');
       _availableUsbDrives.clear();
       
+      if (Platform.isWindows) {
+        await _detectUsbDrivesWindows();
+      } else if (Platform.isLinux) {
+        await _detectUsbDrivesLinux();
+      } else if (Platform.isMacOS) {
+        await _detectUsbDrivesMacOS();
+      }
+      
+      logger.i('Gefundene USB-Laufwerke: $_availableUsbDrives');
+      return _availableUsbDrives;
+    } catch (e) {
+      logger.e('Fehler beim Erkennen von USB-Laufwerken: $e');
+      return [];
+    }
+  }
+
+  /// Erkennt USB-Laufwerke auf Windows
+  Future<void> _detectUsbDrivesWindows() async {
+    try {
       // Windows: Prüfe alle Laufwerke von D bis Z
       for (var i = 68; i <= 90; i++) { // D-Z in ASCII
         final driveLetter = String.fromCharCode(i);
@@ -40,11 +59,70 @@ class StorageService {
           // Ignoriere nicht zugängliche Laufwerke
         }
       }
-      
-      return _availableUsbDrives;
     } catch (e) {
-      logger.e('Fehler beim Erkennen von USB-Laufwerken: $e');
-      return [];
+      logger.e('Fehler bei Windows USB-Erkennung: $e');
+    }
+  }
+
+  /// Erkennt USB-Laufwerke auf Linux
+  Future<void> _detectUsbDrivesLinux() async {
+    try {
+      // Linux: Prüfe /mnt und /media Verzeichnisse
+      final paths = ['/mnt', '/media', '/run/media/${Platform.environment['USER'] ?? 'user'}'];
+      
+      for (final path in paths) {
+        try {
+          final dir = Directory(path);
+          if (!await dir.exists()) continue;
+          
+          final entries = await dir.list().toList();
+          for (final entry in entries) {
+            if (entry is Directory) {
+              try {
+                // Überprüfe ob Verzeichnis zugänglich ist
+                await entry.list().toList();
+                _availableUsbDrives.add(entry.path);
+                logger.i('USB-Laufwerk gefunden: ${entry.path}');
+              } catch (e) {
+                // Ignoriere nicht zugängliche Verzeichnisse
+              }
+            }
+          }
+        } catch (e) {
+          // Ignoriere nicht zugängliche Pfade
+        }
+      }
+    } catch (e) {
+      logger.e('Fehler bei Linux USB-Erkennung: $e');
+    }
+  }
+
+  /// Erkennt USB-Laufwerke auf macOS
+  Future<void> _detectUsbDrivesMacOS() async {
+    try {
+      // macOS: Prüfe /Volumes Verzeichnis
+      try {
+        final dir = Directory('/Volumes');
+        if (!await dir.exists()) return;
+        
+        final entries = await dir.list().toList();
+        for (final entry in entries) {
+          if (entry is Directory && !entry.path.contains('System')) {
+            try {
+              // Überprüfe ob Verzeichnis zugänglich ist
+              await entry.list().toList();
+              _availableUsbDrives.add(entry.path);
+              logger.i('USB-Laufwerk gefunden: ${entry.path}');
+            } catch (e) {
+              // Ignoriere nicht zugängliche Verzeichnisse
+            }
+          }
+        }
+      } catch (e) {
+        logger.e('Fehler bei macOS USB-Erkennung: $e');
+      }
+    } catch (e) {
+      logger.e('Fehler bei macOS USB-Erkennung: $e');
     }
   }
 
@@ -137,10 +215,10 @@ class StorageService {
       
       // Vereinfachte Überprüfung - mindestens 100MB sollten frei sein
       final dir = Directory(_selectedUsbPath!);
-      final stat = await dir.stat();
+      await dir.stat();
       
       // Hinweis: stat() gibt nicht immer zuverlässige Werte zurück
-      // In Produktivumgebung würde man Win32 API nutzen
+      // In Produktivumgebung würde man plattformspezifische APIs nutzen
       return true;
     } catch (e) {
       logger.e('Fehler beim Prüfen des Speicherplatzes: $e');

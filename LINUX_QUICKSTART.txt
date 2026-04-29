@@ -1,0 +1,82 @@
+🐧 LIHPBOX AUF LINUX - SCHNELLSTART
+
+====================================================
+SCHRITT 1: Abhängigkeiten installieren
+====================================================
+
+Öffne Terminal und führe aus:
+
+  sudo apt update
+  sudo apt install -y build-essential cmake pkg-config libssl-dev \
+    gphoto2 libgphoto2-dev libusb-1.0-0-dev libgtk-3-dev libblkid-dev
+
+Falls Flutter noch nicht installiert:
+  git clone https://github.com/flutter/flutter.git ~/flutter
+  export PATH="$PATH:~/flutter/bin"
+
+Überprüfe Flutter:
+  flutter --version
+
+
+====================================================
+SCHRITT 2: Projekt vorbereiten
+====================================================
+
+Im Projektverzeichnis:
+
+  bash setup.sh
+
+Das Skript überprüft alle Voraussetzungen.
+
+
+====================================================
+SCHRITT 3: App starten
+====================================================
+
+Debug-Modus (schnelle Entwicklung):
+  
+  bash START_APP.sh
+  
+  oder: flutter run -d linux
+
+
+Release-Build (optimiert, ohne Debug-Tools):
+
+  bash BUILD_RELEASE.sh
+
+Die App befindet sich dann in:
+  ./build/linux/x64/release/bundle/lihpbox
+
+
+====================================================
+SCHRITT 4: Kamera verbinden (optional)
+====================================================
+
+Verbinde deine Nikon D7100 über USB.
+
+Überprüfe Verbindung:
+  
+  gphoto2 --list-cameras
+
+Falls Berechtigungsfehler:
+  
+  sudo usermod -a -G dialout $USER
+  newgrp dialout
+
+
+====================================================
+PROBLEME?
+====================================================
+
+Siehe: LINUX_SETUP.md (Detaillierte Anleitung)
+
+Häufige Fehler:
+- "flutter not found" → Flutter zum PATH hinzufügen
+- "gphoto2 not found" → sudo apt install gphoto2
+- CMake/Build-Fehler → flutter clean && flutter pub get
+- Kamera nicht erkannt → Berechtigungen anpassen (siehe STEP 4)
+
+
+====================================================
+Viel Erfolg! 🎉
+====================================================
