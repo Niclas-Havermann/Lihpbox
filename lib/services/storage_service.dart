@@ -1,5 +1,6 @@
 import 'package:logger/logger.dart';
 import 'dart:io';
+import 'package:path/path.dart' as path;
 
 /// Service für die Verwaltung von USB-Speicher und Dateien
 class StorageService {
@@ -151,7 +152,7 @@ class StorageService {
         _selectedUsbPath = usbPath;
         
         // Erstelle Lihpbox Verzeichnis
-        final lihpboxDir = Directory('$usbPath\\Lihpbox');
+        final lihpboxDir = Directory(path.join(usbPath, 'Lihpbox'));
         if (!await lihpboxDir.exists()) {
           await lihpboxDir.create(recursive: true);
         }
@@ -173,7 +174,7 @@ class StorageService {
   String? getPhotoStoragePath() {
     if (_selectedUsbPath == null) return null;
     
-    final storagePath = '$_selectedUsbPath\\Lihpbox\\Photos';
+    final storagePath = path.join(_selectedUsbPath!, 'Lihpbox', 'Photos');
     return storagePath;
   }
 
@@ -195,7 +196,7 @@ class StorageService {
       
       final timestamp = DateTime.now().millisecondsSinceEpoch;
       final fileName = 'photo_$timestamp.jpg';
-      final targetPath = '$storagePath\\$fileName';
+      final targetPath = path.join(storagePath, fileName);
       
       final file = File(sourcePath);
       await file.copy(targetPath);

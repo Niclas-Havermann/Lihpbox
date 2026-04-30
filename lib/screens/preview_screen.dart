@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:path/path.dart' as path;
 import '../services/camera_service.dart';
 import '../services/photo_service.dart';
 import '../services/storage_service.dart';
@@ -76,7 +77,7 @@ class _PreviewScreenState extends State<PreviewScreen> {
           id: _photoService.generatePhotoId(),
           filePath: photoPath,
           timestamp: DateTime.now(),
-          fileName: photoPath.split('\\').last,
+          fileName: path.basename(photoPath),
         );
 
         _photoService.addPhoto(photo);

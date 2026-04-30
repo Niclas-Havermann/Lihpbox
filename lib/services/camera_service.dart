@@ -1,5 +1,6 @@
 import 'package:logger/logger.dart';
 import 'dart:io';
+import 'package:path/path.dart' as path;
 
 /// Service für die Steuerung der Nikon D7100 Kamera
 class CameraService {
@@ -83,7 +84,7 @@ class CameraService {
       
       // Temporärer Speicherort für Preview
       final tempDir = Directory.systemTemp;
-      final previewPath = '${tempDir.path}\\lihpbox_preview.jpg';
+      final previewPath = path.join(tempDir.path, 'lihpbox_preview.jpg');
       
       if (_isSimulatorMode) {
         logger.i('Simulator-Modus: Erstelle Dummy-Preview-Datei');
@@ -126,7 +127,7 @@ class CameraService {
       
       final timestamp = DateTime.now().millisecondsSinceEpoch;
       final fileName = 'photo_$timestamp.jpg';
-      final fullPath = '$outputPath\\$fileName';
+      final fullPath = path.join(outputPath, fileName);
       
       // Stelle sicher, dass das Verzeichnis existiert
       final dir = Directory(outputPath);

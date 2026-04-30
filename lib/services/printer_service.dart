@@ -77,26 +77,71 @@ class PrinterService {
     }
   }
 
-  /// Holt Drucker auf Linux/macOS (CUPS)
+  /// Holt Drucker auf Linux/macOS (CUPS, USB und gPhoto2)
   Future<List<String>> _getAvailablePrintersUnix() async {
     try {
-      // Versuche lpstat (CUPS) zu verwenden
-      final result = await Process.run('lpstat', ['-p', '-d']);
+      List<String> printers = [];
       
-      if (result.exitCode == 0) {
-        return result.stdout
-            .toString()
-            .split('\n')
-            .where((line) => line.trim().isNotEmpty && line.contains('printer'))
-            .map((line) {
-              // Parse "printer PRINTER_NAME is ..." Format
-              final parts = line.split(' ');
-              return parts.length > 1 ? parts[1] : '';
-            })
-            .where((name) => name.isNotEmpty)
-            .toList();
+      // Methode 1: Versuche lpstat (CUPS) zu verwenden
+      logger.i('Versuche CUPS (lpstat) zur Druckererkennung...');
+      try {
+        final result = await Process.run('lpstat', ['-p', '-d']);
+        
+        if (result.exitCode == 0 && result.stdout.toString().isNotEmpty) {
+          final cupsPrinters = result.stdout
+              .toString()
+              .split('\n')
+              .where((line) => line.trim().isNotEmpty && line.contains('printer'))
+              .map((line) {
+                final parts = line.split(' ');
+                return parts.length > 1 ? parts[1] : '';
+              })
+              .where((name) => name.isNotEmpty)
+              .toList();
+          
+          if (cupsPrinters.isNotEmpty) {
+            logger.i('CUPS-Drucker gefunden: $cupsPrinters');
+            printers.addAll(cupsPrinters);
+          }
+        }
+      } catch (e) {
+        logger.w('CUPS nicht verfügbar: $e');
       }
-      return [];
+      
+      // Methode 2: Suche nach USB-Druckern mit lsusb
+      logger.i('Suche nach USB-Druckern...');
+      try {
+        final result = await Process.run('lsusb', []);
+        
+        if (result.exitCode == 0) {
+          final usbOutput = result.stdout.toString();
+          if (usbOutput.toLowerCase().contains('canon') || 
+              usbOutput.toLowerCase().contains('selphy')) {
+            logger.i('Canon SELPHY Drucker über USB gefunden');
+            printers.add('Canon SELPHY CP1500');
+          }
+        }
+      } catch (e) {
+        logger.w('lsusb nicht verfügbar: $e');
+      }
+      
+      // Methode 3: Versuche gPhoto2 (für direkte Kamera/Drucker-Verbindung)
+      logger.i('Suche mit gPhoto2...');
+      try {
+        final result = await Process.run('gphoto2', ['--list-cameras']);
+        
+        if (result.exitCode == 0 && result.stdout.toString().contains('Canon')) {
+          logger.i('Canon-Gerät über gPhoto2 gefunden');
+          if (!printers.contains('Canon SELPHY CP1500')) {
+            printers.add('Canon SELPHY CP1500');
+          }
+        }
+      } catch (e) {
+        logger.w('gPhoto2 Drucker-Suche fehlgeschlagen: $e');
+      }
+      
+      logger.i('Erkannte Drucker: $printers');
+      return printers;
     } catch (e) {
       logger.e('Fehler beim Auslesen von Unix-Druckern: $e');
       return [];
