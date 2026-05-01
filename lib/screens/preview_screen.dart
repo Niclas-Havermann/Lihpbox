@@ -9,7 +9,7 @@ import '../widgets/timer_widget.dart';
 import 'dart:io';
 import 'dart:async';
 
-/// Preview Screen - Zeigt Live-Preview der Kamera
+/// Preview Screen - Zeigt das letzte aufgenommene Foto
 class PreviewScreen extends StatefulWidget {
   const PreviewScreen({Key? key}) : super(key: key);
 
@@ -23,67 +23,98 @@ class _PreviewScreenState extends State<PreviewScreen>
   final _photoService = PhotoService();
   final _storageService = StorageService();
 
-  String? _previewImagePath;
+  String? _lastPhotoPath;
   bool _isLoadingPreview = true;
   bool _isCapturing = false;
   bool _showTimer = false;
-  int _timerDuration = 5; // Standard-Timer
-  
-  late Timer _livePreviewTimer;
+  int _timerDuration = 5;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _loadPreview();
-    
-    // Starte periodische Live-Vorschau Aktualisierung (alle 500ms)
-    _livePreviewTimer = Timer.periodic(
-      const Duration(milliseconds: 500),
-      (_) {
-        // Lade Preview nur wenn nicht gerade ein Foto aufgenommen wird
-        if (!_isCapturing && !_showTimer && mounted) {
-          _loadPreview();
-        }
-      },
-    );
+    _loadLastPhoto();
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _livePreviewTimer.cancel();
     super.dispose();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      // Screen ist in den Vordergrund gekommen - lade Preview neu
-      _loadPreview();
+      _loadLastPhoto();
     }
   }
 
-  Future<void> _loadPreview() async {
+  /// Lädt das zuletzt gespeicherte Foto aus dem Speicherpfad
+  Future<void> _loadLastPhoto() async {
     if (!mounted) return;
-    
+
     setState(() => _isLoadingPreview = true);
-    
-    final previewPath = await _cameraService.startLivePreview();
+
+    try {
+      final storagePath = _storageService.getPhotoStoragePath();
+
+      if (storagePath != null) {
+        final dir = Directory(storagePath);
+        if (await dir.exists()) {
+          // Alle Bilddateien im Ordner suchen
+          final files = dir
+              .listSync()
+              .whereType<File>()
+              .where((f) =>
+                  f.path.endsWith('.jpg') ||
+                  f.path.endsWith('.jpeg') ||
+                  f.path.endsWith('.png'))
+              .toList();
+
+          if (files.isNotEmpty) {
+            // Nach Änderungsdatum sortieren → neuestes zuerst
+            files.sort((a, b) => b
+                .statSync()
+                .modified
+                .compareTo(a.statSync().modified));
+
+            if (mounted) {
+              setState(() {
+                _lastPhotoPath = files.first.path;
+                _isLoadingPreview = false;
+              });
+              return;
+            }
+          }
+        }
+      }
+
+      // Fallback: Letztes Foto aus PhotoService
+      final photos = _photoService.getAllPhotos();
+      if (photos.isNotEmpty) {
+        final latest = photos.last;
+        if (mounted) {
+          setState(() {
+            _lastPhotoPath = latest.filePath;
+            _isLoadingPreview = false;
+          });
+          return;
+        }
+      }
+    } catch (e) {
+      debugPrint('Fehler beim Laden des letzten Fotos: $e');
+    }
+
+    // Kein Foto gefunden
     if (mounted) {
       setState(() {
-        _previewImagePath = previewPath;
+        _lastPhotoPath = null;
         _isLoadingPreview = false;
       });
     }
   }
 
-  void _refreshPreview() {
-    _loadPreview();
-  }
-
   Future<void> _onTimerComplete() async {
-    // Timer ist abgelaufen - löse die Kamera aus
     if (mounted) {
       setState(() => _isCapturing = true);
     }
@@ -111,7 +142,6 @@ class _PreviewScreenState extends State<PreviewScreen>
       });
 
       if (photoPath != null) {
-        // Erstelle Photo-Objekt
         final photo = Photo(
           id: _photoService.generatePhotoId(),
           filePath: photoPath,
@@ -121,7 +151,6 @@ class _PreviewScreenState extends State<PreviewScreen>
 
         _photoService.addPhoto(photo);
 
-        // Navigiere zum Bestätigungsbildschirm
         if (mounted) {
           Navigator.of(context).pushReplacementNamed(
             '/photo-confirmation',
@@ -149,7 +178,7 @@ class _PreviewScreenState extends State<PreviewScreen>
       },
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Kamera-Vorschau (Live)'),
+          title: const Text('Letztes Foto'),
           centerTitle: true,
           backgroundColor: Colors.blueAccent,
           leading: IconButton(
@@ -159,8 +188,8 @@ class _PreviewScreenState extends State<PreviewScreen>
           actions: [
             IconButton(
               icon: const Icon(Icons.refresh),
-              onPressed: _refreshPreview,
-              tooltip: 'Preview aktualisieren',
+              onPressed: _loadLastPhoto,
+              tooltip: 'Aktualisieren',
             ),
           ],
         ),
@@ -168,68 +197,44 @@ class _PreviewScreenState extends State<PreviewScreen>
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Preview Image
+              // Foto Anzeige
               Expanded(
-                child: Stack(
-                  children: [
-                    Container(
-                      margin: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        border: Border.all(color: Colors.grey, width: 3),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: _isLoadingPreview
-                          ? const Center(child: CircularProgressIndicator())
-                          : _previewImagePath != null &&
-                                  File(_previewImagePath!).existsSync()
-                              ? ClipRRect(
-                                  borderRadius: BorderRadius.circular(8),
-                                  child: Image.file(
-                                    File(_previewImagePath!),
-                                    fit: BoxFit.cover,
-                                  ),
-                                )
-                              : const Center(
-                                  child: Text(
-                                    'Keine Vorschau verfügbar',
-                                    style: TextStyle(fontSize: 18),
-                                  ),
-                                ),
-                    ),
-                    // Live-Indikator
-                    if (!_isLoadingPreview)
-                      Positioned(
-                        top: 30,
-                        right: 30,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: Colors.red,
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: const Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.videocam, color: Colors.white, size: 16),
-                              SizedBox(width: 6),
-                              Text(
-                                'LIVE',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 12,
-                                ),
+                child: Container(
+                  margin: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey, width: 3),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: _isLoadingPreview
+                      ? const Center(child: CircularProgressIndicator())
+                      : _lastPhotoPath != null &&
+                              File(_lastPhotoPath!).existsSync()
+                          ? ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: Image.file(
+                                File(_lastPhotoPath!),
+                                fit: BoxFit.contain,
                               ),
-                            ],
-                          ),
-                        ),
-                      ),
-                  ],
+                            )
+                          : const Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.photo_outlined,
+                                      size: 64, color: Colors.grey),
+                                  SizedBox(height: 16),
+                                  Text(
+                                    'Noch kein Foto vorhanden',
+                                    style: TextStyle(
+                                        fontSize: 18, color: Colors.grey),
+                                  ),
+                                ],
+                              ),
+                            ),
                 ),
               ),
 
-              // Timer or Capture Button
+              // Timer oder Button
               if (_showTimer)
                 TimerWidget(
                   duration: _timerDuration,
