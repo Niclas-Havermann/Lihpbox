@@ -148,21 +148,60 @@ class StorageService {
   Future<bool> setUsbPath(String usbPath) async {
     try {
       final dir = Directory(usbPath);
-      if (await dir.exists()) {
-        _selectedUsbPath = usbPath;
-        
-        // Erstelle Lihpbox Verzeichnis
-        final lihpboxDir = Directory(path.join(usbPath, 'Lihpbox'));
-        if (!await lihpboxDir.exists()) {
-          await lihpboxDir.create(recursive: true);
-        }
-        
-        logger.i('USB-Pfad gesetzt: $_selectedUsbPath');
-        return true;
+      if (!await dir.exists()) {
+        logger.e('USB-Pfad existiert nicht: $usbPath');
+        return false;
       }
-      return false;
+      
+      // Überprüfe ob der Pfad schreibbar ist
+      if (!await _isPathWritable(usbPath)) {
+        logger.e('Keine Schreibberechtigung für: $usbPath');
+        logger.i('💡 Versuche mit sudo zu mounten oder Berechtigungen zu ändern...');
+        
+        if (Platform.isLinux) {
+          logger.w('Auf Linux: Versuche alternative Speicherpfade...');
+          // Versuche Home-Verzeichnis als Fallback
+          final homeDir = Platform.environment['HOME'];
+          if (homeDir != null && await _isPathWritable(homeDir)) {
+            logger.i('Nutze Home-Verzeichnis statt USB: $homeDir');
+            _selectedUsbPath = homeDir;
+            
+            final lihpboxDir = Directory(path.join(homeDir, 'Lihpbox'));
+            if (!await lihpboxDir.exists()) {
+              await lihpboxDir.create(recursive: true);
+            }
+            logger.i('USB-Pfad (Fallback) gesetzt: $_selectedUsbPath');
+            return true;
+          }
+        }
+        return false;
+      }
+      
+      _selectedUsbPath = usbPath;
+      
+      // Erstelle Lihpbox Verzeichnis
+      final lihpboxDir = Directory(path.join(usbPath, 'Lihpbox'));
+      if (!await lihpboxDir.exists()) {
+        await lihpboxDir.create(recursive: true);
+      }
+      
+      logger.i('USB-Pfad gesetzt: $_selectedUsbPath');
+      return true;
     } catch (e) {
       logger.e('Fehler beim Setzen des USB-Pfads: $e');
+      return false;
+    }
+  }
+
+  /// Überprüft ob ein Pfad schreibbar ist
+  Future<bool> _isPathWritable(String dirPath) async {
+    try {
+      final testFile = File(path.join(dirPath, '.lihpbox_test_write'));
+      await testFile.writeAsString('test');
+      await testFile.delete();
+      return true;
+    } catch (e) {
+      logger.w('Pfad nicht schreibbar ($dirPath): $e');
       return false;
     }
   }
