@@ -6,13 +6,17 @@ class PhotoDisplayWidget extends StatelessWidget {
   final String photoPath;
   final VoidCallback onPrint;
   final VoidCallback onCancel;
+  final VoidCallback onSave;
   final bool isPrinting;
+  
+  
 
   const PhotoDisplayWidget({
     Key? key,
     required this.photoPath,
     required this.onPrint,
     required this.onCancel,
+    required this.onSave,
     this.isPrinting = false,
   }) : super(key: key);
 
@@ -65,6 +69,20 @@ class PhotoDisplayWidget extends StatelessWidget {
                   label: const Text('Abbrechen'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.red,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 30,
+                      vertical: 15,
+                    ),
+                  ),
+                ),
+                // Save Button
+                ElevatedButton.icon(
+                  onPressed: isPrinting ? null : onSave,
+                  icon: const Icon(Icons.save_alt),
+                  label: const Text('Speichern'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color.fromARGB(255, 53, 241, 226),
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(
                       horizontal: 30,

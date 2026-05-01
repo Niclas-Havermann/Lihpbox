@@ -8,10 +8,8 @@ import '../widgets/photo_display_widget.dart';
 class PhotoConfirmationScreen extends StatefulWidget {
   final Photo photo;
 
-  const PhotoConfirmationScreen({
-    Key? key,
-    required this.photo,
-  }) : super(key: key);
+  const PhotoConfirmationScreen({Key? key, required this.photo})
+    : super(key: key);
 
   @override
   State<PhotoConfirmationScreen> createState() =>
@@ -57,10 +55,7 @@ class _PhotoConfirmationScreenState extends State<PhotoConfirmationScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Fehler: $e'),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text('Fehler: $e'), backgroundColor: Colors.red),
         );
         setState(() => _isPrinting = false);
       }
@@ -75,27 +70,33 @@ class _PhotoConfirmationScreenState extends State<PhotoConfirmationScreen> {
     Navigator.of(context).pushReplacementNamed('/preview');
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: () async {
-        Navigator.of(context).pushReplacementNamed('/preview');
-        return false;
-      },
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Foto bestätigen'),
-          centerTitle: true,
-          backgroundColor: Colors.blueAccent,
-          automaticallyImplyLeading: false,
-        ),
-        body: PhotoDisplayWidget(
-          photoPath: widget.photo.filePath,
-          isPrinting: _isPrinting,
-          onPrint: _printPhoto,
-          onCancel: _discardPhoto,
-        ),
-      ),
-    );
+  void _savePhoto() {
+    // Foto ist bereits auf USB gespeichert, daher einfach zurück zur Preview
+    Navigator.of(context).pushReplacementNamed('/preview');
   }
+  
+
+@override
+Widget build(BuildContext context) {
+  return WillPopScope(
+    onWillPop: () async {
+      Navigator.of(context).pushReplacementNamed('/preview');
+      return false;
+    },
+    child: Scaffold(
+      appBar: AppBar(
+        title: const Text('Foto bestätigen'),
+        centerTitle: true,
+        backgroundColor: Colors.blueAccent,
+        automaticallyImplyLeading: false,
+      ),
+      body: PhotoDisplayWidget(
+        photoPath: widget.photo.filePath,
+        isPrinting: _isPrinting,
+        onPrint: _printPhoto,
+        onCancel: _discardPhoto,
+        onSave: _savePhoto,
+      ),
+    ),
+  );
 }
