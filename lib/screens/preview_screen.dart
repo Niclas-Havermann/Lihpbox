@@ -16,7 +16,8 @@ class PreviewScreen extends StatefulWidget {
   State<PreviewScreen> createState() => _PreviewScreenState();
 }
 
-class _PreviewScreenState extends State<PreviewScreen> {
+class _PreviewScreenState extends State<PreviewScreen>
+    with WidgetsBindingObserver {
   final _cameraService = CameraService();
   final _photoService = PhotoService();
   final _storageService = StorageService();
@@ -30,10 +31,29 @@ class _PreviewScreenState extends State<PreviewScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadPreview();
   }
 
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // Screen ist in den Vordergrund gekommen - lade Preview neu
+      _loadPreview();
+    }
+  }
+
   Future<void> _loadPreview() async {
+    if (!mounted) return;
+    
+    setState(() => _isLoadingPreview = true);
+    
     final previewPath = await _cameraService.startLivePreview();
     if (mounted) {
       setState(() {
@@ -41,6 +61,10 @@ class _PreviewScreenState extends State<PreviewScreen> {
         _isLoadingPreview = false;
       });
     }
+  }
+
+  void _refreshPreview() {
+    _loadPreview();
   }
 
   Future<void> _onTimerComplete() async {
@@ -110,13 +134,20 @@ class _PreviewScreenState extends State<PreviewScreen> {
       },
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Kamera-Vorschau'),
+          title: const Text('Kamera-Vorschau (Live)'),
           centerTitle: true,
           backgroundColor: Colors.blueAccent,
           leading: IconButton(
             icon: const Icon(Icons.arrow_back),
             onPressed: () => Navigator.of(context).pushReplacementNamed('/'),
           ),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.refresh),
+              onPressed: _refreshPreview,
+              tooltip: 'Preview aktualisieren',
+            ),
+          ],
         ),
         body: Center(
           child: Column(
@@ -124,29 +155,62 @@ class _PreviewScreenState extends State<PreviewScreen> {
             children: [
               // Preview Image
               Expanded(
-                child: Container(
-                  margin: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.grey, width: 3),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: _isLoadingPreview
-                      ? const Center(child: CircularProgressIndicator())
-                      : _previewImagePath != null &&
-                              File(_previewImagePath!).existsSync()
-                          ? ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
-                              child: Image.file(
-                                File(_previewImagePath!),
-                                fit: BoxFit.cover,
+                child: Stack(
+                  children: [
+                    Container(
+                      margin: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey, width: 3),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: _isLoadingPreview
+                          ? const Center(child: CircularProgressIndicator())
+                          : _previewImagePath != null &&
+                                  File(_previewImagePath!).existsSync()
+                              ? ClipRRect(
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Image.file(
+                                    File(_previewImagePath!),
+                                    fit: BoxFit.cover,
+                                  ),
+                                )
+                              : const Center(
+                                  child: Text(
+                                    'Keine Vorschau verfügbar',
+                                    style: TextStyle(fontSize: 18),
+                                  ),
+                                ),
+                    ),
+                    // Live-Indikator
+                    if (!_isLoadingPreview)
+                      Positioned(
+                        top: 30,
+                        right: 30,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.red,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.videocam, color: Colors.white, size: 16),
+                              SizedBox(width: 6),
+                              Text(
+                                'LIVE',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12,
+                                ),
                               ),
-                            )
-                          : const Center(
-                              child: Text(
-                                'Keine Vorschau verfügbar',
-                                style: TextStyle(fontSize: 18),
-                              ),
-                            ),
+                            ],
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
               ),
 
