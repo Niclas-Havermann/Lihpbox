@@ -219,11 +219,21 @@ class PrinterService {
   /// Druckt auf Linux/macOS mit CUPS
   Future<bool> _printPhotoUnix(String filePath, String printerName, int copies) async {
     try {
-      final result = await Process.run(
-        'lp',
-        ['-d', printerName, '-n', copies.toString(), filePath],
-      );
+      // Prüfen ob Drucker existiert
+      final checkResult = await Process.run('lpstat', ['-p', printerName]);
       
+      List<String> args;
+      if (checkResult.exitCode == 0) {
+        // Drucker gefunden → gezielt ansprechen
+        args = ['-d', printerName, '-n', copies.toString(), filePath];
+      } else {
+        // Fallback: Standarddrucker verwenden
+        logger.w('Drucker "$printerName" nicht gefunden, nutze Standard-Drucker');
+        args = ['-n', copies.toString(), filePath];
+      }
+
+      final result = await Process.run('lp', args);
+
       if (result.exitCode == 0) {
         logger.i('Druck gesendet');
         return true;
