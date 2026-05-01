@@ -1,5 +1,6 @@
 import 'package:logger/logger.dart';
 import 'dart:io';
+import 'dart:async';
 import 'package:path/path.dart' as path;
 
 /// Service für die Steuerung der Nikon D7100 Kamera
@@ -106,7 +107,12 @@ class CameraService {
             '--force-overwrite',               // Überschreibe alte Preview
             '--quiet',                         // Minimale Ausgabe
           ],
-          timeout: const Duration(seconds: 3), // Timeout nach 3 Sekunden
+        ).timeout(
+          const Duration(seconds: 3),
+          onTimeout: () {
+            logger.w('gPhoto2 Timeout nach 3 Sekunden');
+            throw TimeoutException('gPhoto2 antwortet nicht', const Duration(seconds: 3));
+          },
         );
         
         if (result.exitCode == 0 && await File(previewPath).exists()) {
@@ -117,9 +123,6 @@ class CameraService {
           logger.w('--capture-preview fehlgeschlagen, versuche alternative Methode');
           return await _getFallbackPreview(previewPath);
         }
-      } on ProcessException catch (e) {
-        logger.w('gPhoto2 Fehler: $e - Verwende Fallback');
-        return await _getFallbackPreview(previewPath);
       } on TimeoutException {
         logger.w('gPhoto2 Timeout - Kamera antwortet nicht');
         return null;
@@ -140,7 +143,12 @@ class CameraService {
           '--get-file=~/DCIM/100NIKON/LIHPBOX_TEMP.JPG',
           '--filename=$previewPath',
         ],
-        timeout: const Duration(seconds: 2),
+      ).timeout(
+        const Duration(seconds: 2),
+        onTimeout: () {
+          logger.w('Fallback Timeout nach 2 Sekunden');
+          throw TimeoutException('Fallback antwortet nicht', const Duration(seconds: 2));
+        },
       );
       
       if (result.exitCode == 0 && await File(previewPath).exists()) {
