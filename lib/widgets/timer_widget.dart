@@ -28,6 +28,10 @@ class _TimerWidgetState extends State<TimerWidget>
     super.initState();
     _remainingSeconds = widget.duration;
     _setupAnimation();
+    // Starte Animation sofort wenn isRunning true ist
+    if (widget.isRunning) {
+      _controller.forward();
+    }
   }
 
   void _setupAnimation() {
@@ -59,9 +63,13 @@ class _TimerWidgetState extends State<TimerWidget>
   void didUpdateWidget(TimerWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.isRunning && oldWidget.isRunning != widget.isRunning) {
-      _controller.forward();
+      // Controller wird neu erstellt - starte neu
+      if (_controller.status != AnimationStatus.forward) {
+        _controller.forward();
+      }
     } else if (!widget.isRunning && oldWidget.isRunning != widget.isRunning) {
       _controller.stop();
+      _controller.reset();
     }
   }
 

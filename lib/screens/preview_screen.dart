@@ -7,6 +7,7 @@ import '../models/photo.dart';
 import '../widgets/custom_button.dart';
 import '../widgets/timer_widget.dart';
 import 'dart:io';
+import 'dart:async';
 
 /// Preview Screen - Zeigt Live-Preview der Kamera
 class PreviewScreen extends StatefulWidget {
@@ -27,17 +28,31 @@ class _PreviewScreenState extends State<PreviewScreen>
   bool _isCapturing = false;
   bool _showTimer = false;
   int _timerDuration = 5; // Standard-Timer
+  
+  late Timer _livePreviewTimer;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _loadPreview();
+    
+    // Starte periodische Live-Vorschau Aktualisierung (alle 500ms)
+    _livePreviewTimer = Timer.periodic(
+      const Duration(milliseconds: 500),
+      (_) {
+        // Lade Preview nur wenn nicht gerade ein Foto aufgenommen wird
+        if (!_isCapturing && !_showTimer && mounted) {
+          _loadPreview();
+        }
+      },
+    );
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _livePreviewTimer.cancel();
     super.dispose();
   }
 

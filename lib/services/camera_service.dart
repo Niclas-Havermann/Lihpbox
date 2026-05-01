@@ -77,18 +77,17 @@ class CameraService {
   }
 
   /// Startet die Live-Preview von der Kamera
+  /// Nutzt gphoto2 --capture-preview für schnelle echte Live-Frames
   /// Gibt den Pfad zur Preview-Datei zurück
   Future<String?> startLivePreview() async {
     try {
-      logger.i('Starte Live-Preview...');
-      
       // Temporärer Speicherort für Preview
       final tempDir = Directory.systemTemp;
       final previewPath = path.join(tempDir.path, 'lihpbox_preview.jpg');
       
       if (_isSimulatorMode) {
         logger.i('Simulator-Modus: Erstelle Dummy-Preview-Datei');
-        // Erstelle eine Dummy-Bilddatei für Tests
+        // Erstelle eine Dummy-Bilddatei für Tests mit zufälliger Größe (um Unterschiede zu simulieren)
         final file = File(previewPath);
         // Schreibe ein einfaches JPG Header als Platzhalter
         await file.writeAsBytes([
@@ -97,25 +96,60 @@ class CameraService {
         return previewPath;
       }
       
-      // Lädt das aktuelle Bild von der Kamera
+      // Nutze --capture-preview für schnelle Live-Frames statt vollständiger Fotos
+      // Das ist viel schneller und speichert NICHT auf der Kamera
       try {
         final result = await Process.run(
           'gphoto2',
-          ['--capture-image-and-download', '--filename=$previewPath'],
+          [
+            '--capture-preview=$previewPath',  // Schnelle Preview (nicht auf Kamera speichern)
+            '--force-overwrite',               // Überschreibe alte Preview
+            '--quiet',                         // Minimale Ausgabe
+          ],
+          timeout: const Duration(seconds: 3), // Timeout nach 3 Sekunden
         );
         
         if (result.exitCode == 0 && await File(previewPath).exists()) {
-          logger.i('Live-Preview erfolgreich: $previewPath');
+          logger.d('Live-Preview Frame erfolgreich: $previewPath');
           return previewPath;
+        } else {
+          // Falls --capture-preview nicht funktioniert, fallback auf alternative Methode
+          logger.w('--capture-preview fehlgeschlagen, versuche alternative Methode');
+          return await _getFallbackPreview(previewPath);
         }
-      } on ProcessException {
-        logger.w('gPhoto2 nicht verfügbar für Live-Preview');
+      } on ProcessException catch (e) {
+        logger.w('gPhoto2 Fehler: $e - Verwende Fallback');
+        return await _getFallbackPreview(previewPath);
+      } on TimeoutException {
+        logger.w('gPhoto2 Timeout - Kamera antwortet nicht');
         return null;
       }
-      
-      return null;
     } catch (e) {
       logger.e('Fehler bei Live-Preview: $e');
+      return null;
+    }
+  }
+
+  /// Fallback-Methode wenn --capture-preview nicht verfügbar ist
+  Future<String?> _getFallbackPreview(String previewPath) async {
+    try {
+      // Versuche mit --get-file das aktuelle Live-View-Bild zu holen
+      final result = await Process.run(
+        'gphoto2',
+        [
+          '--get-file=~/DCIM/100NIKON/LIHPBOX_TEMP.JPG',
+          '--filename=$previewPath',
+        ],
+        timeout: const Duration(seconds: 2),
+      );
+      
+      if (result.exitCode == 0 && await File(previewPath).exists()) {
+        logger.d('Fallback Preview erfolgreich');
+        return previewPath;
+      }
+      return null;
+    } catch (e) {
+      logger.w('Fallback-Methode auch fehlgeschlagen: $e');
       return null;
     }
   }
