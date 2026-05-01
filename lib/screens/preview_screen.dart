@@ -90,7 +90,7 @@ class _PreviewScreenState extends State<PreviewScreen>
       }
 
       // Fallback: Letztes Foto aus PhotoService
-      final photos = _photoService.getAllPhotos();
+      final photos = _photoService.allPhotos;
       if (photos.isNotEmpty) {
         final latest = photos.last;
         if (mounted) {
