@@ -21,8 +21,41 @@ class _PhotoConfirmationScreenState extends State<PhotoConfirmationScreen> {
   final _storageService = StorageService();
 
   bool _isPrinting = false;
+  bool _hasPaper = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkPaperStatus();
+  }
+
+  Future<void> _checkPaperStatus() async {
+    try {
+      final hasPaper = await _printerService.checkPaperStatus();
+      if (mounted) {
+        setState(() => _hasPaper = hasPaper);
+      }
+    } catch (e) {
+      // Im Fehlerfall annehmen dass Papier vorhanden ist
+      if (mounted) {
+        setState(() => _hasPaper = true);
+      }
+    }
+  }
 
   Future<void> _printPhoto() async {
+    // Sicherheitsprüfung: Kein Druck ohne Papier
+    if (!_hasPaper) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('❌ Druck nicht möglich: Kein Papier im Drucker!'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
+
     setState(() => _isPrinting = true);
 
     try {
@@ -37,9 +70,22 @@ class _PhotoConfirmationScreenState extends State<PhotoConfirmationScreen> {
             ),
           );
 
-          // Warte kurz und kehre zur Preview zurück
-          await Future.delayed(const Duration(seconds: 2));
+          // Warte 20 Sekunden, damit der Drucker Zeit hat zu drucken
+          await Future.delayed(const Duration(seconds: 20));
           if (mounted) {
+            // Prüfe ob der Drucker noch Papier hat
+            final hasPaper = await _printerService.checkPaperStatus();
+            
+            if (!hasPaper) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('⚠️ Warnung: Drucker hat kein Papier!'),
+                  backgroundColor: Colors.orange,
+                  duration: Duration(seconds: 30),
+                ),
+              );
+            }
+            
             Navigator.of(context).pushReplacementNamed('/preview');
           }
         } else {
@@ -93,6 +139,7 @@ Widget build(BuildContext context) {
       body: PhotoDisplayWidget(
         photoPath: widget.photo.filePath,
         isPrinting: _isPrinting,
+        hasPaper: _hasPaper,
         onPrint: _printPhoto,
         onCancel: _discardPhoto,
         onSave: _savePhoto,

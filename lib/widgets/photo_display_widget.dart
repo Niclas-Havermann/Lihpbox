@@ -8,7 +8,7 @@ class PhotoDisplayWidget extends StatelessWidget {
   final VoidCallback onCancel;
   final VoidCallback onSave;
   final bool isPrinting;
-  
+  final bool hasPaper;
   
 
   const PhotoDisplayWidget({
@@ -18,6 +18,7 @@ class PhotoDisplayWidget extends StatelessWidget {
     required this.onCancel,
     required this.onSave,
     this.isPrinting = false,
+    this.hasPaper = true,
   }) : super(key: key);
 
   @override
@@ -90,31 +91,55 @@ class PhotoDisplayWidget extends StatelessWidget {
                     ),
                   ),
                 ),
-                // Drucken Button
-                ElevatedButton.icon(
-                  onPressed: isPrinting ? null : onPrint,
-                  icon: isPrinting
-                      ? SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              Colors.white,
+                // Drucken Button oder Papier-Warnung
+                if (hasPaper)
+                  ElevatedButton.icon(
+                    onPressed: isPrinting ? null : onPrint,
+                    icon: isPrinting
+                        ? SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Colors.white,
+                              ),
                             ),
-                          ),
-                        )
-                      : const Icon(Icons.print),
-                  label: Text(isPrinting ? 'Drucke...' : 'Drucken'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
-                    foregroundColor: Colors.white,
+                          )
+                        : const Icon(Icons.print),
+                    label: Text(isPrinting ? 'Drucke...' : 'Drucken'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 30,
+                        vertical: 15,
+                      ),
+                    ),
+                  )
+                else
+                  Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 30,
                       vertical: 15,
                     ),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withOpacity(0.3),
+                      border: Border.all(color: Colors.red, width: 2),
+                      borderRadius: BorderRadius.circular(5),
+                    ),
+                    child: const Center(
+                      child: Text(
+                        'Kein Druckerpapier vorhanden.\nDrucken nicht möglich',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.red,
+                        ),
+                      ),
+                    ),
                   ),
-                ),
               ],
             ),
           ),
