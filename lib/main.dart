@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:logger/logger.dart';
+import 'package:window_manager/window_manager.dart';
+import 'dart:io';
 import 'screens/home_screen.dart';
 import 'screens/preview_screen.dart';
 import 'screens/photo_confirmation_screen.dart';
@@ -8,7 +10,27 @@ import 'models/photo.dart';
 
 final logger = Logger();
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // Window Manager nur für Desktop-Plattformen initialisieren
+  if (Platform.isWindows || Platform.isLinux) {
+    await windowManager.ensureInitialized();
+    
+    WindowOptions windowOptions = const WindowOptions(
+      size: Size(1920, 1080),
+      center: true,
+      backgroundColor: Colors.black,
+      skipTaskbar: true,
+      fullScreen: true,
+    );
+    
+    windowManager.waitUntilReadyToShow(windowOptions, () async {
+      await windowManager.show();
+      await windowManager.focus();
+    });
+  }
+  
   runApp(const LihpboxApp());
 }
 
