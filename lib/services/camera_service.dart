@@ -129,17 +129,12 @@ class CameraService {
         return previewPath;
       }
       
-      // Nutze --capture-preview für schnelle Live-Frames statt vollständiger Fotos
-      // Das ist viel schneller und speichert NICHT auf der Kamera
+      // --stdout liefert die JPEG-Daten direkt via stdout, umgeht das --filename Problem
       try {
         final result = await Process.run(
           'gphoto2',
-          [
-            '--capture-preview',
-            '--filename=$previewPath',
-            '--force-overwrite',
-            '--quiet',
-          ],
+          ['--capture-preview', '--stdout'],
+          stdoutEncoding: null, // binäre Daten, kein String-Encoding
         ).timeout(
           const Duration(seconds: 3),
           onTimeout: () {
@@ -147,12 +142,14 @@ class CameraService {
             throw TimeoutException('gPhoto2 antwortet nicht', const Duration(seconds: 3));
           },
         );
-        
-        if (result.exitCode == 0 && await File(previewPath).exists()) {
-          logger.d('Live-Preview Frame erfolgreich: $previewPath');
+
+        final bytes = result.stdout as List<int>;
+        if (result.exitCode == 0 && bytes.isNotEmpty) {
+          await File(previewPath).writeAsBytes(bytes);
+          logger.d('Live-Preview Frame: $previewPath (${bytes.length} bytes)');
           return previewPath;
         } else {
-          logger.w('--capture-preview fehlgeschlagen (${result.exitCode}): stdout=${result.stdout} stderr=${result.stderr}');
+          logger.w('--capture-preview fehlgeschlagen (${result.exitCode}): ${result.stderr}');
           return null;
         }
       } on TimeoutException {
