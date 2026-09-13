@@ -77,21 +77,23 @@ class CameraService {
     }
   }
 
-  /// Aktiviert den Kamera-Viewfinder (Live View) – muss vor capture-preview aufgerufen werden
-  Future<bool> enableLiveView() async {
-    if (_isSimulatorMode) return true;
+  /// Aktiviert den Kamera-Viewfinder (Live View) – muss vor capture-preview aufgerufen werden.
+  /// Gibt null bei Erfolg zurück, oder eine Fehlermeldung für die UI.
+  Future<String?> enableLiveView() async {
+    if (_isSimulatorMode) return null;
     try {
       final result = await Process.run('gphoto2', ['--set-config', 'viewfinder=1'])
           .timeout(const Duration(seconds: 5));
       if (result.exitCode == 0) {
         logger.i('Live-View aktiviert');
-        return true;
+        return null;
       }
-      logger.w('Live-View aktivieren fehlgeschlagen (${result.exitCode}): ${result.stderr}');
-      return false;
+      final stderr = result.stderr.toString();
+      logger.w('Live-View aktivieren fehlgeschlagen (${result.exitCode}): $stderr');
+      return stderr;
     } catch (e) {
       logger.e('Fehler beim Aktivieren des Live-View: $e');
-      return false;
+      return e.toString();
     }
   }
 

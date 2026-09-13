@@ -50,7 +50,23 @@ class _PreviewScreenState extends State<PreviewScreen>
 
   void _startLivePreview() {
     _isLivePreviewActive = true;
-    _previewLoopFuture = _cameraService.enableLiveView().then((_) => _runLivePreviewLoop());
+    _previewLoopFuture = _enableAndRunPreview();
+  }
+
+  Future<void> _enableAndRunPreview() async {
+    final error = await _cameraService.enableLiveView();
+    if (error != null) {
+      _isLivePreviewActive = false;
+      if (!mounted) return;
+      final msg = (error.contains('P/A/S/M') || error.contains('Belichtungsprogramm'))
+          ? 'Kamera-Modus auf P, A, S oder M stellen für Live-Preview'
+          : 'Live-View konnte nicht aktiviert werden';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(msg), duration: const Duration(seconds: 5)),
+      );
+      return;
+    }
+    await _runLivePreviewLoop();
   }
 
   Future<void> _stopLivePreview() async {
