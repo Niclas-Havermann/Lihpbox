@@ -25,8 +25,13 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   project.set_dart_entrypoint_arguments(std::move(command_line_arguments));
 
   FlutterWindow window(project);
-  Win32Window::Point origin(10, 10);
-  Win32Window::Size size(1280, 720);
+  
+  // Set to fullscreen dimensions
+  int screenWidth = GetSystemMetrics(SM_CXSCREEN);
+  int screenHeight = GetSystemMetrics(SM_CYSCREEN);
+  
+  Win32Window::Point origin(0, 0);
+  Win32Window::Size size(screenWidth, screenHeight);
   if (!window.Create(L"lihpbox", origin, size)) {
     return EXIT_FAILURE;
   }

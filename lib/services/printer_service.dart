@@ -331,5 +331,69 @@ class PrinterService {
       return 'Fehler';
     }
   }
+
+  /// Prüft ob der Drucker noch Papier hat
+  Future<bool> checkPaperStatus() async {
+    try {
+      logger.i('Prüfe Papierstatus des Druckers...');
+      
+      if (Platform.isWindows) {
+        return await _checkPaperStatusWindows();
+      } else if (Platform.isLinux || Platform.isMacOS) {
+        return await _checkPaperStatusUnix();
+      }
+      return true; // Wenn Plattform nicht unterstützt, nehme an dass Papier vorhanden ist
+    } catch (e) {
+      logger.e('Fehler beim Prüfen des Papierstatus: $e');
+      return true; // Im Fehlerfall optimistisch sein
+    }
+  }
+
+  /// Prüft Papierstatus auf Windows
+  Future<bool> _checkPaperStatusWindows() async {
+    try {
+      final result = await Process.run(
+        'powershell',
+        [
+          '-Command',
+          'Get-PrinterStatus | Where-Object {\$_.Name -like "*Canon*" -or \$_.Name -like "*SELPHY*"} | Select-Object -ExpandProperty PaperError'
+        ],
+      );
+      
+      if (result.exitCode == 0) {
+        final output = result.stdout.toString().trim().toLowerCase();
+        // Wenn "False" oder leer, dann ist kein Papier-Fehler vorhanden
+        final hasPaper = !output.contains('true');
+        logger.i('Windows Papierstatus: ${hasPaper ? "Papier vorhanden" : "Kein Papier"}');
+        return hasPaper;
+      }
+      return true; // Im Zweifelsfall annehmen dass Papier vorhanden ist
+    } catch (e) {
+      logger.w('Fehler beim Prüfen des Windows-Papierstatus: $e');
+      return true;
+    }
+  }
+
+  /// Prüft Papierstatus auf Linux/macOS
+  Future<bool> _checkPaperStatusUnix() async {
+    try {
+      // Versuche lpstat zu verwenden um Drucker-Fehler zu prüfen
+      final result = await Process.run('lpstat', ['-t']);
+      
+      if (result.exitCode == 0) {
+        final output = result.stdout.toString().toLowerCase();
+        // Prüfe auf häufige Papier-Fehler-Indikatoren
+        final hasPaper = !output.contains('paper') && 
+                        !output.contains('out of paper') && 
+                        !output.contains('no paper');
+        logger.i('Unix Papierstatus: ${hasPaper ? "Papier vorhanden" : "Kein Papier"}');
+        return hasPaper;
+      }
+      return true;
+    } catch (e) {
+      logger.w('Fehler beim Prüfen des Unix-Papierstatus: $e');
+      return true;
+    }
+  }
 }
 

@@ -49,6 +49,9 @@ dependencies:
   
   # Logging
   logger: ^2.0.1
+  
+  # Fenster-Verwaltung für Desktop
+  window_manager: ^0.3.8
 
 dev_dependencies:
   flutter_test:

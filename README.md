@@ -1,7 +1,13 @@
+<<<<<<< HEAD
 # Lihpbox - Flutter Fotobox Steuerung
 
 Flutter-Anwendung zur Steuerung einer Fotobox mit Nikon D7100 und Canon SELPHY CP1500.
 Unterstutzt Windows und Linux.
+=======
+# lihpbox
+#Test
+A new Flutter project.
+>>>>>>> 9fdd2c95e50983efacf7869f516f37d613a04b42
 
 ---
 
