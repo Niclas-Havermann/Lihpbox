@@ -103,9 +103,10 @@ class CameraService {
         final result = await Process.run(
           'gphoto2',
           [
-            '--capture-preview=$previewPath',  // Schnelle Preview (nicht auf Kamera speichern)
-            '--force-overwrite',               // Überschreibe alte Preview
-            '--quiet',                         // Minimale Ausgabe
+            '--capture-preview',
+            '--filename=$previewPath',
+            '--force-overwrite',
+            '--quiet',
           ],
         ).timeout(
           const Duration(seconds: 3),

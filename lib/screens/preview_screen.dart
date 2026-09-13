@@ -32,6 +32,7 @@ class _PreviewScreenState extends State<PreviewScreen>
   String? _livePreviewPath;
   bool _isLivePreviewActive = false;
   int _previewFrameCount = 0;
+  Future<void>? _previewLoopFuture;
 
   @override
   void initState() {
@@ -49,11 +50,13 @@ class _PreviewScreenState extends State<PreviewScreen>
 
   void _startLivePreview() {
     _isLivePreviewActive = true;
-    _runLivePreviewLoop();
+    _previewLoopFuture = _runLivePreviewLoop();
   }
 
-  void _stopLivePreview() {
+  Future<void> _stopLivePreview() async {
     _isLivePreviewActive = false;
+    await _previewLoopFuture;
+    _previewLoopFuture = null;
   }
 
   Future<void> _runLivePreviewLoop() async {
@@ -143,7 +146,7 @@ class _PreviewScreenState extends State<PreviewScreen>
   }
 
   Future<void> _onTimerComplete() async {
-    _stopLivePreview();
+    await _stopLivePreview();
     if (mounted) {
       setState(() => _isCapturing = true);
     }
