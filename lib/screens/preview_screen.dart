@@ -9,7 +9,7 @@ import '../widgets/timer_widget.dart';
 import 'dart:io';
 import 'dart:async';
 
-/// Preview Screen - Zeigt das letzte aufgenommene Foto
+/// Preview Screen - Zeigt das letzte aufgenommene Foto oder Live-Preview
 class PreviewScreen extends StatefulWidget {
   const PreviewScreen({Key? key}) : super(key: key);
 
@@ -29,6 +29,10 @@ class _PreviewScreenState extends State<PreviewScreen>
   bool _showTimer = false;
   int _timerDuration = 5;
 
+  String? _livePreviewPath;
+  bool _isLivePreviewActive = false;
+  int _previewFrameCount = 0;
+
   @override
   void initState() {
     super.initState();
@@ -38,8 +42,32 @@ class _PreviewScreenState extends State<PreviewScreen>
 
   @override
   void dispose() {
+    _stopLivePreview();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  void _startLivePreview() {
+    _isLivePreviewActive = true;
+    _runLivePreviewLoop();
+  }
+
+  void _stopLivePreview() {
+    _isLivePreviewActive = false;
+  }
+
+  Future<void> _runLivePreviewLoop() async {
+    while (_isLivePreviewActive && mounted) {
+      final previewPath = await _cameraService.startLivePreview();
+      if (!_isLivePreviewActive || !mounted) break;
+      if (previewPath != null) {
+        setState(() {
+          _livePreviewPath = previewPath;
+          _previewFrameCount++;
+        });
+      }
+      await Future.delayed(const Duration(milliseconds: 100));
+    }
   }
 
   @override
@@ -115,6 +143,7 @@ class _PreviewScreenState extends State<PreviewScreen>
   }
 
   Future<void> _onTimerComplete() async {
+    _stopLivePreview();
     if (mounted) {
       setState(() => _isCapturing = true);
     }
@@ -166,6 +195,7 @@ class _PreviewScreenState extends State<PreviewScreen>
   }
 
   void _capturePhoto() {
+    _startLivePreview();
     setState(() => _showTimer = true);
   }
 
@@ -178,7 +208,7 @@ class _PreviewScreenState extends State<PreviewScreen>
       },
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Letztes Foto'),
+          title: Text(_isLivePreviewActive ? 'Live-Preview' : 'Letztes Foto'),
           centerTitle: true,
           backgroundColor: Colors.blueAccent,
           leading: IconButton(
@@ -205,32 +235,42 @@ class _PreviewScreenState extends State<PreviewScreen>
                     border: Border.all(color: Colors.grey, width: 3),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: _isLoadingPreview
-                      ? const Center(child: CircularProgressIndicator())
-                      : _lastPhotoPath != null &&
-                              File(_lastPhotoPath!).existsSync()
-                          ? ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
-                              child: Image.file(
-                                File(_lastPhotoPath!),
-                                fit: BoxFit.contain,
-                              ),
-                            )
-                          : const Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(Icons.photo_outlined,
-                                      size: 64, color: Colors.grey),
-                                  SizedBox(height: 16),
-                                  Text(
-                                    'Noch kein Foto vorhanden',
-                                    style: TextStyle(
-                                        fontSize: 18, color: Colors.grey),
+                  child: _isLivePreviewActive && _livePreviewPath != null
+                      ? ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.file(
+                            File(_livePreviewPath!),
+                            key: ValueKey(_previewFrameCount),
+                            fit: BoxFit.contain,
+                            gaplessPlayback: true,
+                          ),
+                        )
+                      : _isLoadingPreview
+                          ? const Center(child: CircularProgressIndicator())
+                          : _lastPhotoPath != null &&
+                                  File(_lastPhotoPath!).existsSync()
+                              ? ClipRRect(
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Image.file(
+                                    File(_lastPhotoPath!),
+                                    fit: BoxFit.contain,
                                   ),
-                                ],
-                              ),
-                            ),
+                                )
+                              : const Center(
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.photo_outlined,
+                                          size: 64, color: Colors.grey),
+                                      SizedBox(height: 16),
+                                      Text(
+                                        'Noch kein Foto vorhanden',
+                                        style: TextStyle(
+                                            fontSize: 18, color: Colors.grey),
+                                      ),
+                                    ],
+                                  ),
+                                ),
                 ),
               ),
 
