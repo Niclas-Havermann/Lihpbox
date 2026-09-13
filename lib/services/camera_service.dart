@@ -77,6 +77,36 @@ class CameraService {
     }
   }
 
+  /// Aktiviert den Kamera-Viewfinder (Live View) – muss vor capture-preview aufgerufen werden
+  Future<bool> enableLiveView() async {
+    if (_isSimulatorMode) return true;
+    try {
+      final result = await Process.run('gphoto2', ['--set-config', 'viewfinder=1'])
+          .timeout(const Duration(seconds: 5));
+      if (result.exitCode == 0) {
+        logger.i('Live-View aktiviert');
+        return true;
+      }
+      logger.w('Live-View aktivieren fehlgeschlagen (${result.exitCode}): ${result.stderr}');
+      return false;
+    } catch (e) {
+      logger.e('Fehler beim Aktivieren des Live-View: $e');
+      return false;
+    }
+  }
+
+  /// Deaktiviert den Kamera-Viewfinder nach der Live-Preview
+  Future<void> disableLiveView() async {
+    if (_isSimulatorMode) return;
+    try {
+      await Process.run('gphoto2', ['--set-config', 'viewfinder=0'])
+          .timeout(const Duration(seconds: 5));
+      logger.i('Live-View deaktiviert');
+    } catch (e) {
+      logger.w('Fehler beim Deaktivieren des Live-View: $e');
+    }
+  }
+
   /// Startet die Live-Preview von der Kamera
   /// Nutzt gphoto2 --capture-preview für schnelle echte Live-Frames
   /// Gibt den Pfad zur Preview-Datei zurück
@@ -120,9 +150,8 @@ class CameraService {
           logger.d('Live-Preview Frame erfolgreich: $previewPath');
           return previewPath;
         } else {
-          // Falls --capture-preview nicht funktioniert, fallback auf alternative Methode
-          logger.w('--capture-preview fehlgeschlagen, versuche alternative Methode');
-          return await _getFallbackPreview(previewPath);
+          logger.w('--capture-preview fehlgeschlagen (${result.exitCode}): stdout=${result.stdout} stderr=${result.stderr}');
+          return null;
         }
       } on TimeoutException {
         logger.w('gPhoto2 Timeout - Kamera antwortet nicht');
@@ -130,35 +159,6 @@ class CameraService {
       }
     } catch (e) {
       logger.e('Fehler bei Live-Preview: $e');
-      return null;
-    }
-  }
-
-  /// Fallback-Methode wenn --capture-preview nicht verfügbar ist
-  Future<String?> _getFallbackPreview(String previewPath) async {
-    try {
-      // Versuche mit --get-file das aktuelle Live-View-Bild zu holen
-      final result = await Process.run(
-        'gphoto2',
-        [
-          '--get-file=~/DCIM/100NIKON/LIHPBOX_TEMP.JPG',
-          '--filename=$previewPath',
-        ],
-      ).timeout(
-        const Duration(seconds: 2),
-        onTimeout: () {
-          logger.w('Fallback Timeout nach 2 Sekunden');
-          throw TimeoutException('Fallback antwortet nicht', const Duration(seconds: 2));
-        },
-      );
-      
-      if (result.exitCode == 0 && await File(previewPath).exists()) {
-        logger.d('Fallback Preview erfolgreich');
-        return previewPath;
-      }
-      return null;
-    } catch (e) {
-      logger.w('Fallback-Methode auch fehlgeschlagen: $e');
       return null;
     }
   }

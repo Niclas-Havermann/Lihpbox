@@ -50,13 +50,16 @@ class _PreviewScreenState extends State<PreviewScreen>
 
   void _startLivePreview() {
     _isLivePreviewActive = true;
-    _previewLoopFuture = _runLivePreviewLoop();
+    _previewLoopFuture = _cameraService.enableLiveView().then((_) => _runLivePreviewLoop());
   }
 
   Future<void> _stopLivePreview() async {
     _isLivePreviewActive = false;
     await _previewLoopFuture;
     _previewLoopFuture = null;
+    await _cameraService.disableLiveView();
+    // Kamera braucht kurz um den Spiegel zu senken bevor Aufnahme möglich ist
+    await Future.delayed(const Duration(milliseconds: 500));
   }
 
   Future<void> _runLivePreviewLoop() async {
